@@ -9,7 +9,7 @@ const config = require(path.resolve(__dirname+"/config.json"));
 
 //this removes some goofs from html text that we don't want
 function translateHTML(rawText){
-	return rawText.replace(/&amp;/g,"&");
+	return rawText.replace(/&amp;/g,"&").replace(/&nbsp;/g," ");
 }
 
 async function grabDays(moduleIndex=0,snifDays=1){
