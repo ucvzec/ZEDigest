@@ -4,8 +4,6 @@
 const puppet = require("puppeteer");
 const headless = true;
 
-const soft160Site = "https://cse.unl.edu/~soft160/";
-
 const path = require("path");
 const config = require(path.resolve(__dirname+"/config.json"));
 
@@ -19,7 +17,7 @@ async function grabDays(moduleIndex=0,snifDays=1){
 		headless,
 	});
 	const page = await browser.newPage();
-	await page.goto(soft160Site);
+	await page.goto(config.soft160Site);
 	let reading = await page.evaluate((params)=>{
 		let found = [];
 		const moduleElement = document.querySelectorAll(params.moduleSelector)[params.moduleIndex];

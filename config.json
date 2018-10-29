@@ -1,4 +1,6 @@
 {
+	"soft160Site": "https://cse.unl.edu/~soft160/",
+	
 	"puppetInformation": {
 		"classDaySelector": ".day",
 		"moduleSelector": ".collapsible",
