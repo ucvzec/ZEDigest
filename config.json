@@ -1,0 +1,11 @@
+{
+	"puppetInformation": {
+		"classDaySelector": ".day",
+		"moduleSelector": ".collapsible",
+
+		"readingsSelector": "#readings",
+		"assignmentSelector": "#assignments",
+		"reminderSelector": "#reminders",
+		"learningGoalsSelector": "#learning-goals"
+	}
+}
