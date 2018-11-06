@@ -2,48 +2,85 @@
 	The purpose of this progress is to make a daily / weekly digest of what we're doing in Soft 160, that can be send out via email
 */
 const puppet = require("puppeteer");
-const headless = true;
+
+const devMode = false;
 
 const path = require("path");
 const config = require(path.resolve(__dirname+"/config.json"));
 
 //this removes some goofs from html text that we don't want
 function translateHTML(rawText){
-	return rawText.replace(/&amp;/g,"&").replace(/&nbsp;/g," ");
+	return String(rawText).replace(/&amp;/g,"&").replace(/&nbsp;/g," ");
 }
 
-async function grabDays(moduleIndex=0,snifDays=1){
+async function grabDays(moduleIndex=0,daysCount=1,startDay=0){
 	const browser = await puppet.launch({
-		headless,
+		devtools:devMode,
 	});
 	const page = await browser.newPage();
 	await page.goto(config.soft160Site);
 	let reading = await page.evaluate((params)=>{
-		let found = [];
-		const moduleElement = document.querySelectorAll(params.moduleSelector)[params.moduleIndex];
-		const classList = Object.values(moduleElement.querySelectorAll(params.classDaySelector)).slice(0,params.snifDays);
-		classList.forEach((day)=>{
-			//this makes sure we don't try to provide more readings that day than there is.
-			if(day.querySelector(params.readingsSelector) !== null){
-				const textNodeArea = day.querySelector(params.readingsSelector).nextElementSibling;
-				found.push(`${textNodeArea.innerHTML.match(new RegExp(params.regexRaw,"g")).join("\n")}`);
-			}
-		});
-		return found;
-	},Object.assign({moduleIndex,snifDays,regexRaw:"(?<=\>)[a-zA-Z 0-9.&;]+(?=\<)"},config.puppetInformation));
-	
-	await browser.close();
-	
-	reading.forEach((read)=>{
-		console.log(translateHTML(read));
-	});
-	console.log('Done');
-}
-grabDays(0,1);
+		let readingList = [];
 
+		const moduleElement = document.querySelectorAll(params.moduleSelector)[params.moduleIndex];
+		const classList = Object.values(moduleElement.querySelectorAll(params.classDaySelector)).slice(params.startDay,params.daysCount+params.startDay);
+
+		let day;
+		let readingInfo;
+
+		for(let x=0;x!=classList.length;++x){
+			day = classList[x];
+
+			//this makes sure we don't try to provide more readings that day than there is.
+			readingInfo = day.innerHTML.match(/((?<=<a href="https:\/\/cse\.unl\.edu\/SEN1">)|(?<=<a href="http:\/\/cse\.unl\.edu\/~cbourke\/ComputerScienceOne\.pdf">))[a-zA-Z -.0-9]*(?=<\/a>)/g); 
+			
+			readingList=readingList.concat(day.innerHTML.match(/(?<=>)[()a-zA-Z ,0-9&;.:-]*(?=<)/));
+			if(readingInfo !== null){
+				//day title
+
+				//reading information
+				readingList=readingList.concat(readingInfo);
+			}
+		}
+		return readingList;
+	},Object.assign({moduleIndex,daysCount,startDay},config.puppetInformation));
+	//(?<=\>)[a-zA-Z 0-9.&;]+(?=\<)
+	//doesn't close the browser if we're in dev mode.
+	(!devMode?await browser.close():"");
+	return reading;
+}
 /*
-	NOTES:
-	H4 is used for the category headers, while H3 is used for the day header
-	Regex to get the readings (?<=\>)[a-zA-Z 0-9.&;]+(?=\<)    global
-	https://github.com/GoogleChrome/puppeteers
+reading.forEach((read)=>{
+	console.log(translateHTML(read));
+});
+console.log('Done');
 */
+
+async function checkUpdate(lastUpdateHeader){
+	let results = await grabDays(0,1);
+	let candidateHeader = results[0];
+	if(candidateHeader !== lastUpdateHeader){
+		results.forEach((line)=>{
+			console.log(translateHTML(line));
+		});
+		lastUpdateHeader = candidateHeader;
+	}else{
+		//nothing new
+		(devMode?console.log("Nothing new."):"");
+	}
+	return lastUpdateHeader;
+}
+
+async function notfoLoop(){
+	const oneHourTime = 3600000;
+	const hoursBetweenChecks  = 2;
+
+	var lastUpdateHeader= await checkUpdate(lastUpdateHeader);
+	let hourInterval = setInterval(async function(){
+		lastUpdateHeader = await checkUpdate(lastUpdateHeader);
+	},oneHourTime*hoursBetweenChecks);
+}
+
+notfoLoop();
+
+//going to use AWS SES for sending notification emails in the future.
